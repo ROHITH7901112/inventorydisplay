@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+{% block content %}
+
+<div class="product-grid">
+  {% for s in sarees %}
+  <div class="product-card">
+    <div class="slider" data-index="0">
+      {% for img in s.images %}
+        <div class="slide">
+          <img src="{{ url_for('uploaded_file', saree_id=s.saree_id, filename=img) }}" alt="{{ s.saree_id }}">
+        </div>
+      {% endfor %}
+      {% if s.images|length > 1 %}
+      <button class="arrow prev">‹</button>
+      <button class="arrow next">›</button>
+      {% endif %}
+    </div>
+    <h3 class="saree-id">{{ s.saree_id }}</h3>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Fullscreen modal -->
+<div id="img-modal" class="img-modal" aria-hidden="true">
+  <div class="img-modal-backdrop"></div>
+  <div class="img-modal-body">
+    <button id="modal-close" class="modal-close">&times;</button>
+    <img id="modal-img" src="" alt="">
+  </div>
+</div>
+
+<script>
+/* --- SLIDER CONTROL --- */
+document.querySelectorAll('.slider').forEach(slider=>{
+  const slides=slider.querySelectorAll('.slide');
+  slides.forEach((s,i)=>s.style.transform=`translateX(${i*100}%)`);
+
+  const prev=slider.querySelector('.prev');
+  const next=slider.querySelector('.next');
+  let idx=0;
+
+  function showSlide(n){
+    idx=(n+slides.length)%slides.length;
+    slider.setAttribute('data-index',idx);
+    slides.forEach((s,i)=>s.style.transform=`translateX(${(i-idx)*100}%)`);
+  }
+
+  if(prev && next){
+    prev.addEventListener('click',()=>showSlide(idx-1));
+    next.addEventListener('click',()=>showSlide(idx+1));
+  }
+
+  // Hover slider autoplay
+  let timer;
+  slider.addEventListener('mouseenter',()=>{
+    timer=setInterval(()=>showSlide(idx+1),1500);
+    slider.classList.add('hover');
+  });
+  slider.addEventListener('mouseleave',()=>{
+    clearInterval(timer);
+    slider.classList.remove('hover');
+  });
+
+  // Click to fullscreen
+  slides.forEach(s=>{
+    s.addEventListener('click',()=>openModal(s.querySelector('img').src));
+  });
+});
+
+/* --- MODAL --- */
+const modal=document.getElementById('img-modal');
+const modalImg=document.getElementById('modal-img');
+const closeBtn=document.getElementById('modal-close');
+modal.addEventListener('click',e=>{
+  if(e.target===modal||e.target===closeBtn) closeModal();
+});
+function openModal(src){
+  modalImg.src=src;
+  modal.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  modal.style.display='none';
+  document.body.style.overflow='';
+}
+</script>
+
+{% endblock %}

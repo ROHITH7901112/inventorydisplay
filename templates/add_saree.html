@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_saree.css') }}">
+{% endblock %}
+{% block content %}
+<div class="add-page">
+  <aside class="left-panel">
+    <h3>Scan Saree QR</h3>
+    <div id="qr-section">
+      <video id="camera" autoplay playsinline style="width:100%;border-radius:8px;background:#000"></video>
+      <canvas id="qr-canvas" width="320" height="240" style="display:none;"></canvas>
+      <p id="status" class="muted">Click Start to open camera</p>
+      <div style="margin-top:10px;">
+        <button id="start-btn" class="btn">Start Scanner</button>
+        <button id="stop-btn" class="btn-ghost" disabled>Stop</button>
+      </div>
+    </div>
+    <hr>
+    <p class="muted">Scanned ID auto-fills the form on the right.</p>
+  </aside>
+
+  <section class="right-panel">
+    <h2>Add Inventory</h2>
+    <form method="post" enctype="multipart/form-data">
+      <label>Saree ID (auto-filled)</label>
+      <input id="saree_id" name="saree_id" type="text" readonly placeholder="Scan QR to autofill">
+
+      <label>Product Images</label>
+      <div id="drop-zone" class="drop-zone">
+        <p>Drag & drop images here or click to select (multiple)</p>
+        <input id="images" name="images" type="file" multiple accept="image/*" style="display:none;">
+      </div>
+
+      <div id="preview-grid" class="preview-grid"></div>
+
+      <label>Price (₹)</label>
+      <input name="price" type="number" step="0.01" placeholder="0.00">
+
+      <div style="margin-top:16px;">
+        <button type="submit" class="btn">ADD SAREE</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script src="{{ url_for('static', filename='js/jsQR.js') }}"></script>
+<script>
+/* Scanner (jsQR) */
+const video = document.getElementById('camera');
+const canvas = document.getElementById('qr-canvas');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const sareeInput = document.getElementById('saree_id');
+const startBtn = document.getElementById('start-btn');
+const stopBtn = document.getElementById('stop-btn');
+let scanning=false, stream=null;
+
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream; scanning=true;
+    statusEl.textContent = "Scanning for QR...";
+    startBtn.disabled=true; stopBtn.disabled=false;
+    scanLoop();
+  } catch(err){
+    statusEl.textContent = "Camera access denied or not available: " + (err.message || err);
+  }
+}
+function stopCamera(){
+  scanning=false; startBtn.disabled=false; stopBtn.disabled=true;
+  statusEl.textContent = "Scanner stopped";
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+}
+function scanLoop(){
+  if(!scanning) return;
+  if(video.readyState === video.HAVE_ENOUGH_DATA){
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code = jsQR(imageData.data, canvas.width, canvas.height);
+    if(code){
+      sareeInput.value = code.data;
+      statusEl.textContent = "✅ QR Detected: " + code.data;
+      stopCamera();
+      return;
+    }
+  }
+  requestAnimationFrame(scanLoop);
+}
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click', stopCamera);
+
+/* Drag & drop uploader + previews */
+const drop = document.getElementById('drop-zone');
+const inputFiles = document.getElementById('images');
+const previewGrid = document.getElementById('preview-grid');
+
+drop.addEventListener('click', () => inputFiles.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragleave', e => { drop.classList.remove('dragover'); });
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('dragover');
+  handleFiles(Array.from(e.dataTransfer.files));
+});
+inputFiles.addEventListener('change', () => handleFiles(Array.from(inputFiles.files)));
+
+function handleFiles(files){
+  files.forEach(file => {
+    if(!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const card = document.createElement('div');
+      card.className = 'preview-card';
+      card.innerHTML = `<img src="${evt.target.result}" alt=""> <button class="remove">×</button>`;
+      const btn = card.querySelector('.remove');
+      btn.addEventListener('click', () => card.remove());
+      previewGrid.appendChild(card);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+</script>
+{% endblock %}
