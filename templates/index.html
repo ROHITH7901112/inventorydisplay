@@ -4,6 +4,21 @@
 {% endblock %}
 {% block content %}
 
+<!-- 🔍 Search Bar -->
+<div class="search-container">
+  <form method="GET" action="{{ url_for('index') }}" class="search-form">
+    <input
+      type="text"
+      name="q"
+      value="{{ query }}"
+      placeholder="Search Saree by ID..."
+      class="search-input"
+    />
+    <button type="submit" class="search-btn">Search</button>
+  </form>
+</div>
+
+<!-- 🟩 Product Grid -->
 <div class="product-grid">
   {% for s in sarees %}
   <div class="product-card">
@@ -20,6 +35,8 @@
     </div>
     <h3 class="saree-id">{{ s.saree_id }}</h3>
   </div>
+  {% else %}
+  <p class="no-results">No sarees found matching "{{ query }}"</p>
   {% endfor %}
 </div>
 
@@ -44,7 +61,7 @@ document.querySelectorAll('.slider').forEach(slider=>{
 
   function showSlide(n){
     idx=(n+slides.length)%slides.length;
-    slider.setAttribute('data-index',idx);
+    slider.setAttribute('data-index', idx+1 + ' / ' + slides.length);
     slides.forEach((s,i)=>s.style.transform=`translateX(${(i-idx)*100}%)`);
   }
 
@@ -68,6 +85,9 @@ document.querySelectorAll('.slider').forEach(slider=>{
   slides.forEach(s=>{
     s.addEventListener('click',()=>openModal(s.querySelector('img').src));
   });
+
+  // Initialize index label
+  slider.setAttribute('data-index', '1 / ' + slides.length);
 });
 
 /* --- MODAL --- */
