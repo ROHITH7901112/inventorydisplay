@@ -1,1 +1,6 @@
 /.qodo
+__pycache__/
+venv/
+uploads/
+*.pyc
+*.db
