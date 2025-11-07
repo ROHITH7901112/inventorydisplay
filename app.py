@@ -3,35 +3,24 @@ import uuid
 import numpy as np
 import cv2
 from PIL import Image
-from flask import (
-    Flask, render_template, request, redirect, url_for, flash,
-    send_from_directory, jsonify
-)
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 from models import db, Saree
 
-
-# -------------------------
 # Allowed image extensions
-# -------------------------
 ALLOWED_EXT = {"png", "jpg", "jpeg", "gif"}
 
 
 def allowed_file(filename):
-    """Check if uploaded file has an allowed image extension."""
+    """Check if uploaded file has an allowed extension"""
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
 
-# ==============================================================
-# Flask application factory
-# ==============================================================
-
 def create_app():
+    """Application factory for Flask"""
     app = Flask(__name__)
 
-    # -------------------------
-    # Configuration
-    # -------------------------
+    # Paths and config
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
@@ -40,22 +29,14 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-    # -------------------------
     # Initialize DB
-    # -------------------------
     db.init_app(app)
 
     with app.app_context():
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         db.create_all()
 
-    # ==============================================================
-    # ROUTES
-    # ==============================================================
-
-    # -------------------------
-    # 🏠 Home page – show all sarees (with search)
-    # -------------------------
+    # 🟩 Home page – show all sarees (with search)
     @app.route("/")
     def index():
         query = request.args.get("q", "").strip()
@@ -76,9 +57,7 @@ def create_app():
 
         return render_template("index.html", sarees=results, query=query)
 
-    # -------------------------
-    # ➕ Add new saree
-    # -------------------------
+    # 🟩 Add new saree
     @app.route("/add", methods=["GET", "POST"])
     def add_saree():
         if request.method == "POST":
@@ -87,50 +66,41 @@ def create_app():
                 flash("Please provide or scan a Saree ID first.", "danger")
                 return redirect(url_for("add_saree"))
 
-            # Add saree to DB if not existing
             existing = Saree.query.filter_by(saree_id=saree_id).first()
             if not existing:
                 saree = Saree(saree_id=saree_id)
                 db.session.add(saree)
                 db.session.commit()
 
-            # Create saree-specific folder
             folder = os.path.join(app.config["UPLOAD_FOLDER"], saree_id)
             os.makedirs(folder, exist_ok=True)
 
-            # Handle multiple image uploads
             files = request.files.getlist("images")
-            saved_files = 0
             for f in files:
                 if f and allowed_file(f.filename):
                     filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
                     f.save(os.path.join(folder, filename))
-                    saved_files += 1
 
-            flash(f"Saree '{saree_id}' added successfully with {saved_files} images.", "success")
+            flash(f"Saree '{saree_id}' added successfully.", "success")
             return redirect(url_for("index"))
 
         return render_template("add_saree.html")
 
-    # -------------------------
-    # 📷 QR Decode API
-    # -------------------------
+    # 🟩 QR decode route
     @app.route("/decode-qr", methods=["POST"])
     def decode_qr():
-        if 'qr_image' not in request.files:
+        if "qr_image" not in request.files:
             return jsonify({"ok": False, "error": "No file part 'qr_image'"}), 400
 
-        f = request.files['qr_image']
-        if f.filename == '':
+        f = request.files["qr_image"]
+        if f.filename == "":
             return jsonify({"ok": False, "error": "No selected file"}), 400
 
         try:
-            # Convert uploaded image to OpenCV format
             img = Image.open(f.stream).convert("RGB")
             arr = np.array(img)
             frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
-            # Detect and decode QR code
             detector = cv2.QRCodeDetector()
             data, points, _ = detector.detectAndDecode(frame)
 
@@ -141,22 +111,16 @@ def create_app():
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
-    # -------------------------
-    # 🖼️ Serve uploaded images
-    # -------------------------
+    # 🟩 Serve uploaded images
     @app.route("/uploads/<saree_id>/<filename>")
     def uploaded_file(saree_id, filename):
-        folder_path = os.path.join(app.config["UPLOAD_FOLDER"], saree_id)
-        return send_from_directory(folder_path, filename)
+        return send_from_directory(os.path.join(app.config["UPLOAD_FOLDER"], saree_id), filename)
 
-    # ==============================================================
     return app
 
 
-# ==============================================================
-# Run the Flask app (for local testing)
-# ==============================================================
+# 🟩 Define app for Gunicorn (Render)
+app = create_app()
 
 if __name__ == "__main__":
-    app = create_app()
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
