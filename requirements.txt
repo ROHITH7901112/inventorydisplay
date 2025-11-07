@@ -1,5 +1,28 @@
-Flask==2.3.2
-Flask-SQLAlchemy==3.0.3
-Werkzeug==2.3.7
+# Core Flask framework
+Flask==3.0.3
+Werkzeug==3.0.2
+Jinja2==3.1.4
+itsdangerous==2.2.0
+click==8.1.7
+
+# Database (SQLAlchemy ORM)
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.34
+
+# Image processing (for QR decoding and image preview)
+opencv-python-headless==4.10.0.84
+Pillow==10.4.0
+numpy==1.26.4
+
+# Optional utilities
+python-dotenv==1.0.1   # For environment variables (.env)
+uuid==1.30             # For unique filenames (if used)
+
+# QR code detection and decoding (alternative to pyzbar)
 qrcode==7.4.2
-Pillow==10.0.1
+
+# For deployment compatibility
+gunicorn==22.0.0
+
+# Optional: if you ever use Firebase or cloud storage
+# firebase-admin==6.5.0
